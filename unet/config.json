@@ -1,0 +1,7 @@
+{
+	"git_repo": "https://github.com/Dammi87/unet_weight",
+	"project_id": "karolinska-188312",
+	"staging_bucket": "gs://datasets-simone",
+	"zone": "europe-west1-b",
+	"cluster_name": "karotest"
+}

@@ -23,13 +23,57 @@ import numpy as np
 import os
 from PIL import Image
 
-from .common import get_weight_array
+
+def load_da_image(path):
+    if "gs://" in path:
+        print("Hello")
+        print(path)
+        file_name = os.path.basename(path)
+        os.system('gsutil cp %s .' % path)
+        print(os.popen('ll').read())
+        return Image.open(file_name)
+    else:
+        return Image.open(path)
+
+
+def save_image(save_path, array):
+    img = Image.fromarray(array)
+
+    if "gs://" in save_path:
+        file_name = os.path.basename(save_path)
+        img.save(file_name)
+        os.system('gsutil cp %s %s' % (file_name, save_path))
+        print("Saved at %s" % save_path)
+    else:
+        img.save(save_path)
+
+# from unet.label.common import get_weight_array
+
+
+def mask_to_weight(mask_path, output_folder, w0=10.0, sigma=5.0):
+    # Get weights
+    weights = np.array(load_da_image(mask_path))
+
+    # Theoretical maximum weight
+    w_max = w0 + 1
+
+    # Normalize to 255
+    weights = np.divide(255 * weights, w_max).astype(np.uint8)
+    file_name = os.path.basename(mask_path).split('.')[0]
+    save_path = os.path.join(output_folder, "%s.png" % file_name)
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    save_image(save_path, weights)
+
+    return save_path
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-i', '--image_path', help='Path to the image to convert',
+    parser.add_argument('-m', '--mask_path', help='Path to the mask to convert',
                         required=True)
     parser.add_argument('-o', '--output_folder', help='Folder to save image to',
                         required=True)
@@ -40,19 +84,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Get weights
-    weights = get_weight_array(args.image_path, w0=args.w0, sigma=args.sigma)
-
-    # Theoretical maximum weight
-    w_max = args.w0 + 1
-
-    # Normalize to 255
-    weights = np.divide(255 * weights, w_max).astype(np.uint8)
-    file_name = os.path.basename(args.image_path).split('.')[0]
-    save_path = os.path.join(args.output_folder, "%s.png" % file_name)
-
-    if not os.path.exists(args.output_folder):
-        os.makedirs(args.output_folder)
-
-    img = Image.fromarray(weights)
-    img.save(save_path)
+    mask_to_weight(args.mask_path, args.output_folder, args.w0, args.sigma)
